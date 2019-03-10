@@ -3,11 +3,14 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/rand"
 	"encoding/pem"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"fmt"
+	"time"
+	"math/big"
 )
 
 func main() {
@@ -33,6 +36,8 @@ func main() {
 
 type handler struct{}
 
+
+
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	req.ParseForm()
 	csr := req.Form.Get("csr")
@@ -40,6 +45,52 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	csrBytes, _ := pem.Decode([]byte(csr))
 	csrParsed, _ := x509.ParseCertificateRequest(csrBytes.Bytes)
 	fmt.Println(csrParsed)
+	caKey, err := ioutil.ReadFile("/var/www/api/ca/private/dec.ca.key.pem")
+	fmt.Println(err)
+	caKeyBytes, _ := pem.Decode([]byte(caKey))
+	var caKeyPriv interface{}
+	//caKeyPriv, _ := x509.ParsePKCS8PrivateKey(caKeyBytes.Bytes)
+	caKeyPriv, err = x509.ParsePKCS1PrivateKey(caKeyBytes.Bytes)
+	fmt.Println(err)
+	caKeyPubPEM, err := ioutil.ReadFile("/var/www/api/ca/private/pub.ca.pem")
+	caKeyPubBytes, _ := pem.Decode([]byte(caKeyPubPEM))
+	caKeyPub, err := x509.ParsePKIXPublicKey(caKeyPubBytes.Bytes)
+	fmt.Println(err)
+	fmt.Println("readcert")
+	caCert, err := ioutil.ReadFile("/var/www/api/ca/certs/ca2.cert.pem")
+	fmt.Println(caCert)
+	fmt.Println(err)
+	caCertBytes, _ := pem.Decode([]byte(caCert))
+	caCertParsed, err := x509.ParseCertificate(caCertBytes.Bytes)
+	fmt.Println(err)
+
+	clientCSR := csrParsed
+	caCRT := caCertParsed
+
+	fmt.Println("A")
+	clientCRTTemplate := x509.Certificate{
+		Signature:          clientCSR.Signature,
+		SignatureAlgorithm: clientCSR.SignatureAlgorithm,
+		PublicKeyAlgorithm: clientCSR.PublicKeyAlgorithm,
+		PublicKey:          clientCSR.PublicKey,
+		SerialNumber: big.NewInt(2),
+		Issuer:       caCRT.Subject,
+		Subject:      clientCSR.Subject,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(24 * time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+
+	fmt.Println("B")
+	fmt.Println(caKeyPub)
+
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCertParsed, caKeyPub, caKeyPriv)
+	fmt.Println("C")
+	fmt.Println(err)
+	crtPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	fmt.Println(crtPem)
 	w.Write([]byte("PONG\n"))
 }
 
