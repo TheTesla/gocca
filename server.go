@@ -86,11 +86,13 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	fmt.Println(caKeyPub)
 
 
-	derBytes, err := x509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCertParsed, caKeyPub, caKeyPriv)
+	//derBytes, err := x509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCertParsed, caKeyPub, caKeyPriv)
+	derBytes, err := x509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCertParsed, clientCSR.PublicKey, caKeyPriv)
 	fmt.Println("C")
 	fmt.Println(err)
 	crtPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	fmt.Println(crtPem)
-	w.Write([]byte("PONG\n"))
+	w.Write([]byte(crtPem))
+	//w.Write([]byte("PONG\n"))
 }
 
