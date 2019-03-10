@@ -77,21 +77,22 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	//	Value: []byte(`email:my@mail.tld, URI:http://ca.dom.tld/`),
 	//}
 
-
+	fmt.Println(clientCSR.DNSNames)
 
 	clientCRTTemplate := x509.Certificate{
 		Signature:          clientCSR.Signature,
 		SignatureAlgorithm: clientCSR.SignatureAlgorithm,
 		PublicKeyAlgorithm: clientCSR.PublicKeyAlgorithm,
 		PublicKey:          clientCSR.PublicKey,
-		SerialNumber: big.NewInt(5),
+		SerialNumber: big.NewInt(6),
 		Issuer:       caCRT.Subject,
 		Subject:      clientCSR.Subject,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().Add(24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-		DNSNames:     []string{"san1.srns.local", "san2.srns.local"},
+		//DNSNames:     []string{"san1.srns.local", "san2.srns.local"},
+		DNSNames:     clientCSR.DNSNames,
 		//ExtraExtensions: []pkix.Extension{extSubjectAltName},
 		//Extensions: []pkix.Extension{extSubjectAltName},
 
