@@ -3,7 +3,9 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+//	"crypto/x509/pkix"
 	"crypto/rand"
+//	"encoding/asn1"
 	"encoding/pem"
 	"io/ioutil"
 	"log"
@@ -68,18 +70,31 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	caCRT := caCertParsed
 
 	fmt.Println("A")
+
+	//extSubjectAltName := pkix.Extension{
+	//	Id: asn1.ObjectIdentifier{2, 5, 29, 17},
+	//	Critical: false,
+	//	Value: []byte(`email:my@mail.tld, URI:http://ca.dom.tld/`),
+	//}
+
+
+
 	clientCRTTemplate := x509.Certificate{
 		Signature:          clientCSR.Signature,
 		SignatureAlgorithm: clientCSR.SignatureAlgorithm,
 		PublicKeyAlgorithm: clientCSR.PublicKeyAlgorithm,
 		PublicKey:          clientCSR.PublicKey,
-		SerialNumber: big.NewInt(2),
+		SerialNumber: big.NewInt(5),
 		Issuer:       caCRT.Subject,
 		Subject:      clientCSR.Subject,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().Add(24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		DNSNames:     []string{"san1.srns.local", "san2.srns.local"},
+		//ExtraExtensions: []pkix.Extension{extSubjectAltName},
+		//Extensions: []pkix.Extension{extSubjectAltName},
+
 	}
 
 	fmt.Println("B")
