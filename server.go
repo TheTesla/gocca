@@ -82,6 +82,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	dbg2, err := json.Marshal(peerCerts)
 	fmt.Println(err)
 	fmt.Println(string(dbg2))
+	fmt.Println(peerCerts[0].DNSNames)
 	//fmt.Println(csr)
 	csrBytes, _ := pem.Decode([]byte(csr))
 	csrParsed, _ := x509.ParseCertificateRequest(csrBytes.Bytes)
