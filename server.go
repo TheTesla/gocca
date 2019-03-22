@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/rand"
@@ -15,21 +18,35 @@ import (
 )
 
 func main() {
+
         certPath := "/etc/ssl/gotest.smartrns.net"
-	caCert, err := ioutil.ReadFile("/var/www/api/ca/certs/ca.cert.pem")
+	//caCert, err := ioutil.ReadFile("/var/www/api/ca/certs/ca.cert.pem")
+	caCert, err := ioutil.ReadFile("/var/www/api/ca/certs/ca-root.pem")
 	if err != nil {
 		log.Fatal(err)
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 	cfg := &tls.Config{
-                ClientAuth: tls.RequestClientCert,
-		//ClientAuth: tls.RequireAndVerifyClientCert,
+                //ClientAuth: tls.RequestClientCert,
+		ClientAuth: tls.RequireAndVerifyClientCert,
 		ClientCAs:  caCertPool,
+		//RootCAs:  caCertPool,
 	}
 	h := handler{}
 	h.SetCAKey("/var/www/api/ca/private/dec.ca.key.pem")
-	h.SetCACert("/var/www/api/ca/certs/ca.cert.pem")
+	h.SetCACert("/var/www/api/ca/certs/ca-root.pem")
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGHUP)
+	go func(){
+		for sig := range c {
+			println(sig)
+			fmt.Printf("Got A HUP Signal! Now Reloading Conf....\n")
+			//h.SetCAKey("/var/www/api/ca/private/dec.ca.key.pem")
+			h.SetCAKey("sigsso_private.key")
+			h.SetCACert("/var/www/api/ca/certs/ca.cert.pem")
+		}
+	}()
 	srv := &http.Server{
 		Addr:      ":8443",
 		Handler:   &h,
@@ -47,12 +64,14 @@ func (h *handler) SetCAKey(filename string) {
 	caKey, _ := ioutil.ReadFile(filename)
 	caKeyBytes, _ := pem.Decode([]byte(caKey))
 	h.caKeyPriv, _ = x509.ParsePKCS1PrivateKey(caKeyBytes.Bytes)
+	fmt.Printf("Loaded CA key: %s\n", filename)
 }
 
 func (h *handler) SetCACert(filename string) {
 	caCert, _ := ioutil.ReadFile(filename)
 	caCertBytes, _ := pem.Decode([]byte(caCert))
 	h.caCert, _ = x509.ParseCertificate(caCertBytes.Bytes)
+	fmt.Printf("Loaded CA cert: %s\n", filename)
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
