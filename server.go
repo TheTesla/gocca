@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"time"
 	"math/big"
+	"encoding/json"
 )
 
 func main() {
@@ -55,9 +56,14 @@ func (h *handler) SetCACert(filename string) {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+
 	req.ParseForm()
 	csr := req.Form.Get("csr")
-	fmt.Println(csr)
+	peerCerts := req.TLS.PeerCertificates
+	dbg2, err := json.Marshal(peerCerts)
+	fmt.Println(err)
+	fmt.Println(string(dbg2))
+	//fmt.Println(csr)
 	csrBytes, _ := pem.Decode([]byte(csr))
 	csrParsed, _ := x509.ParseCertificateRequest(csrBytes.Bytes)
 	clientCSR := csrParsed
@@ -69,7 +75,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	//	Critical: false,
 	//	Value: []byte(`email:my@mail.tld, URI:http://ca.dom.tld/`),
 	//}
-
+	dbg, _ := json.Marshal(clientCSR)
+	fmt.Println(string(dbg))
 	fmt.Println(clientCSR.DNSNames)
 
 	clientCRTTemplate := x509.Certificate{
@@ -93,7 +100,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	derBytes, err := x509.CreateCertificate(rand.Reader, &clientCRTTemplate, h.caCert, clientCSR.PublicKey, h.caKeyPriv)
 	fmt.Println(err)
 	crtPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	fmt.Println(crtPem)
+	//fmt.Println(crtPem)
 	w.Write([]byte(crtPem))
 }
 
