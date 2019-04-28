@@ -27,11 +27,17 @@ func main() {
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
-	cfg := &tls.Config{
-		//ClientAuth: tls.RequestClientCert,
-		ClientAuth: tls.RequireAndVerifyClientCert,
-		ClientCAs:  caCertPool,
-		//RootCAs:  caCertPool,
+
+	var cfg *tls.Config
+	if "nocheck" == os.Args[1] {
+		cfg = &tls.Config{}
+	} else {
+		cfg = &tls.Config{
+			//ClientAuth: tls.RequestClientCert,
+			ClientAuth: tls.RequireAndVerifyClientCert,
+			ClientCAs:  caCertPool,
+			//RootCAs:  caCertPool,
+		}
 	}
 	h := handler{}
 	h.SetCAKey("/var/www/api/ca/private/dec.ca.key.pem")
@@ -91,11 +97,16 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	peerDNSNames := peerCerts[0].DNSNames
 	clientDNSNames := clientCSR.DNSNames
 	fmt.Println(clientDNSNames)
-	if ok, name := IsSubset(clientDNSNames, peerDNSNames); !ok {
-		fmt.Printf("DNS name not authorized by client certificate: %s\n", name)
-		return
-	}
+	fmt.Println(peerDNSNames)
 
+	if "nocheck" == os.Args[1] {
+		fmt.Println("provide cert without validation - nocheck argument")
+	} else {
+		if ok, name := IsSubset(clientDNSNames, peerDNSNames); !ok {
+			fmt.Printf("DNS name not authorized by client certificate: %s\n", name)
+			return
+		}
+	}
 	//extSubjectAltName := pkix.Extension{
 	//	Id: asn1.ObjectIdentifier{2, 5, 29, 17},
 	//	Critical: false,
