@@ -84,24 +84,24 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	req.ParseForm()
 	csr := req.Form.Get("csr")
-	peerCerts := req.TLS.PeerCertificates
-	dbg2, err := json.Marshal(peerCerts)
-	fmt.Println(err)
-	fmt.Println(string(dbg2))
-	fmt.Println(peerCerts[0].DNSNames)
 	csrBytes, _ := pem.Decode([]byte(csr))
 	csrParsed, _ := x509.ParseCertificateRequest(csrBytes.Bytes)
 	clientCSR := csrParsed
 	caCRT := h.caCert
 
-	peerDNSNames := peerCerts[0].DNSNames
 	clientDNSNames := clientCSR.DNSNames
 	fmt.Println(clientDNSNames)
-	fmt.Println(peerDNSNames)
 
 	if "nocheck" == os.Args[1] {
 		fmt.Println("provide cert without validation - nocheck argument")
 	} else {
+		peerCerts := req.TLS.PeerCertificates
+		dbg2, err := json.Marshal(peerCerts)
+		fmt.Println(string(dbg2))
+		fmt.Println(err)
+		fmt.Println(peerCerts[0].DNSNames)
+		peerDNSNames := peerCerts[0].DNSNames
+		fmt.Println(peerDNSNames)
 		if ok, name := IsSubset(clientDNSNames, peerDNSNames); !ok {
 			fmt.Printf("DNS name not authorized by client certificate: %s\n", name)
 			return
